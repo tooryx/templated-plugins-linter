@@ -62,7 +62,10 @@ func loadTests(path string) (*tpb.TemplatedPluginTests, error) {
 
 func main() {
 	// configure logging
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	log.Logger = log.Output(zerolog.ConsoleWriter{
+		Out: os.Stderr,
+		NoColor: false,
+	})
 
 	if len(os.Args) != 2 {
 		log.Panic().Msg("Usage: linter <plugin_file>")
