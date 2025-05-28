@@ -15,8 +15,6 @@
 package rules
 
 import (
-	"fmt"
-
 	"github.com/rs/zerolog/log"
 	tpb "github.com/tooryx/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 )
@@ -50,9 +48,9 @@ type RuleResult struct {
 
 // Log the result.
 func (r *RuleResult) Log() {
-	helperURL := ""
+	helperURL := "None"
 	if r.helperURL != "" {
-		helperURL = fmt.Sprintf("[see %s]", r.helperURL)
+		helperURL = r.helperURL
 	}
 
 	logger := log.With().
