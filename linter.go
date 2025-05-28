@@ -1,0 +1,105 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http:#www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package main defines the linter entrypoint.
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"regexp"
+	"strings"
+
+	"github.com/tooryx/templated-plugins-linter/rules"
+	"google.golang.org/protobuf/encoding/prototext"
+	tpb "github.com/tooryx/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
+)
+
+var (
+	simplifyPathRegexp = regexp.MustCompile(`templated/templateddetector/plugins/.+`)
+)
+
+func loadPlugin(path string) (*tpb.TemplatedPlugin, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var plugin tpb.TemplatedPlugin
+	if err := prototext.Unmarshal(data, &plugin); err != nil {
+		return nil, err
+	}
+
+	return &plugin, nil
+}
+
+func loadTests(path string) (*tpb.TemplatedPluginTests, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var pluginTests tpb.TemplatedPluginTests
+	if err := prototext.Unmarshal(data, &pluginTests); err != nil {
+		return nil, err
+	}
+
+	return &pluginTests, nil
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Usage: linter <plugin_file>")
+		os.Exit(1)
+	}
+
+	pluginPath := os.Args[1]
+	simplePluginPath := simplifyPathRegexp.FindString(pluginPath)
+	plugin, err := loadPlugin(pluginPath)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	testFile := strings.Replace(pluginPath, ".textproto", "_test.textproto", 1)
+	simpleTestFilepath := simplifyPathRegexp.FindString(testFile)
+	var results []*rules.RuleResult
+	tests, err := loadTests(testFile)
+	if err != nil {
+		results = append(results, noTestFinding(pluginPath))
+	}
+
+	r, err := rules.RunAll(simplePluginPath, plugin, simpleTestFilepath, tests)
+	if err != nil {
+		fmt.Printf("error while running rules: %v", err)
+		os.Exit(1)
+	}
+
+	results = append(results, r...)
+	exitcode := 0
+	for _, result := range results {
+		if result.Blocking() {
+			exitcode = 1
+		}
+
+		result.Log()
+	}
+
+	os.Exit(exitcode)
+}
+
+func noTestFinding(testFilepath string) (*rules.RuleResult) {
+	reason := "No tests found for plugin with auto-detected path. Did you write tests? Did you use the `_test.textproto` pattern for the filename?"
+	return rules.NewRuleResult("test-file-not-found", reason, "", false, testFilepath, 0)
+}
