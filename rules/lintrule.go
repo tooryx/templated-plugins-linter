@@ -17,7 +17,7 @@ package rules
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	tpb "github.com/tooryx/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 )
 
@@ -55,16 +55,16 @@ func (r *RuleResult) Log() {
 		helperURL = fmt.Sprintf("[see %s]", r.helperURL)
 	}
 
-	logger := log.WithFields(log.Fields{
-		"linter": r.identifier,
-		"documentation": helperURL,
-		"filename": r.filename,
-	})
+	logger := log.With().
+		Str("linter", r.identifier).
+		Str("documentation", helperURL).
+		Str("filename", r.filename).
+		Logger()
 
 	if r.blocking {
-		logger.Error(r.reason)
+		logger.Error().Msg(r.reason)
 	} else {
-		logger.Warning(r.reason)
+		logger.Warn().Msg(r.reason)
 	}
 }
 

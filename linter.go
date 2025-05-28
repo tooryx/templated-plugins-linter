@@ -17,13 +17,14 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
 
 	"github.com/tooryx/templated-plugins-linter/rules"
 	"google.golang.org/protobuf/encoding/prototext"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	tpb "github.com/tooryx/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 )
 
@@ -60,16 +61,18 @@ func loadTests(path string) (*tpb.TemplatedPluginTests, error) {
 }
 
 func main() {
+	// configure logging
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+
 	if len(os.Args) != 2 {
-		fmt.Println("Usage: linter <plugin_file>")
-		os.Exit(1)
+		log.Panic().Msg("Usage: linter <plugin_file>")
 	}
 
 	pluginPath := os.Args[1]
 	simplePluginPath := simplifyPathRegexp.FindString(pluginPath)
 	plugin, err := loadPlugin(pluginPath)
 	if err != nil {
-		log.Panic(err)
+		log.Panic().Err(err)
 	}
 
 	testFile := strings.Replace(pluginPath, ".textproto", "_test.textproto", 1)
